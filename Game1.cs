@@ -1,51 +1,58 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SharpDX.Direct3D9;
 
-namespace c_engine;
-
-public class Game1 : Game
+namespace c_engine
 {
-    private GraphicsDeviceManager _graphics;
-    private SpriteBatch _spriteBatch;
-
-    public Game1()
+    public class Game1 : Game
     {
-        _graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = "Content";
-        IsMouseVisible = true;
-    }
+        Texture2D wolfTexture;
+        private GraphicsDeviceManager _graphics;
+        private SpriteBatch _spriteBatch;
 
-    protected override void Initialize()
-    {
-        // TODO: Add your initialization logic here
+        public Game1()
+        {
+            _graphics = new GraphicsDeviceManager(this);
+            Content.RootDirectory = "Content";
+            IsMouseVisible = true;
+        }
 
-        base.Initialize();
-    }
+        protected override void Initialize()
+        {
+            // TODO: Add your initialization logic here
 
-    protected override void LoadContent()
-    {
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
+            base.Initialize();
+        }
 
-        // TODO: use this.Content to load your game content here
-    }
+        protected override void LoadContent()
+        {
+            _spriteBatch = new SpriteBatch(GraphicsDevice);
+            wolfTexture = Content.Load<Texture2D>("wolfy");
 
-    protected override void Update(GameTime gameTime)
-    {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-            Exit();
+            // TODO: use this.Content to load your game content here
+        }
 
-        // TODO: Add your update logic here
+        protected override void Update(GameTime gameTime)
+        {
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
 
-        base.Update(gameTime);
-    }
+            // TODO: Add your update logic here
 
-    protected override void Draw(GameTime gameTime)
-    {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
+            base.Update(gameTime);
+        }
 
-        // TODO: Add your drawing code here
+        protected override void Draw(GameTime gameTime)
+        {
+            GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        base.Draw(gameTime);
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(wolfTexture, new Vector2(0, 0), Color.White);
+            _spriteBatch.End();
+            // TODO: Add your drawing code here
+
+            base.Draw(gameTime);
+        }
     }
 }
