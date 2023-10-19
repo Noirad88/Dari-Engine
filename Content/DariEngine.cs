@@ -1,13 +1,20 @@
-﻿using SharpDX.XAudio2;
+﻿//using Microsoft.Xna.Framework;
+using SharpDX.Direct3D11;
+using SharpDX.XAudio2;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Permissions;
+using System.Security.Policy;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows.Forms.Design;
 using System.Xml;
 
 namespace c_engine.Content
@@ -23,11 +30,92 @@ namespace c_engine.Content
 
     }
 
-    internal class Object : EventListener
+    public class World
+    {
+    
+        public Events Events = new Events();
+        public SceneTree SceneTree = new SceneTree();
+        public Physics Physics = new Physics();
+        public Sound Sound = new Sound();
+        public DeltaTime DeltaTime = new DeltaTime();
+
+        public List<SceneTree> scenes = new List<SceneTree>();
+
+        public World()
+        {
+            //create scenes 
+
+        }
+
+        public void load_scene(string p_scene_name)
+        {
+            
+        }
+
+
+    }
+
+    public class MainMenu : SceneChild
+    {
+        //create main menu setup here
+    }
+
+    public class OptionsMenu : SceneChild
+    {
+        //create main menu setup here
+    }
+
+    public class GameWorld : SceneChild
+    {
+        //create game components here
+    }
+
+    public class DeltaTime
+    {
+        Stopwatch sw = new Stopwatch();
+        static DeltaTime instance = new DeltaTime();
+
+        static public long get()
+        {
+            return DeltaTime.instance.sw.ElapsedTicks / 1000;
+        }
+
+        static public void restart()
+        {
+            DeltaTime.instance.sw.Restart();
+        }
+
+        static public void stop()
+        {
+            DeltaTime.instance.sw.Stop();
+        }
+
+    }
+
+    public class Sound
+    {
+        public Sound()
+        {
+
+        }
+
+    }
+
+    public class Screen : Object
+    {
+        private List<WeakReference<Drawable>> drawable_objects = new List<WeakReference<Drawable>>();
+        public Screen()
+        {
+
+        }
+
+    }
+
+    public class Object : MethodCoordinator
     {
         UniqueId id;
         string name;
-        string description;
+
         public UniqueId Id { 
             get { return id; } 
             set { id = value; } 
@@ -51,11 +139,13 @@ namespace c_engine.Content
 
     }
 
-    class SceneChild : Object
+    public class SceneChild : Object
     {
+        public string child_name = "SceneChild";
         private List<SceneChild> children;
         private SceneChild parent = null;
         internal static SceneChild scene_tree = null;
+
 
         public SceneChild()
         { 
@@ -77,9 +167,28 @@ namespace c_engine.Content
             return parent;
         }
 
+        public void set_child_name(string p_name)
+        {
+            this.child_name = p_name;
+        } 
+
         public SceneChild get_child_at(int index)
         {
             return children[index];
+        }
+
+        public SceneChild get_child_by_name(string p_name)
+        {
+            SceneChild child_to_find = children.Find(c => c.child_name == p_name);
+            if (child_to_find != null)
+            {
+                return child_to_find;
+            }
+            else
+            {
+                return null;
+            }
+
         }
 
         public void delete_child_at(int index)
@@ -133,7 +242,7 @@ namespace c_engine.Content
     }
 
 
-    class Color : Object
+    public class Color : Object
     {
         public Vector4 rgba;
 
@@ -158,13 +267,13 @@ namespace c_engine.Content
         }
     }
 
-    class Spatial : SceneChild
+    public class Spatial : SceneChild
     {
         public Vector2 position;
         public Vector2 global_position;
         public Vector2 rotation;
         public Vector2 global_rotation;
-        public Color color;
+        public Color color = new Color();
 
         public Spatial()
         {
@@ -212,9 +321,9 @@ namespace c_engine.Content
     {
         abstract public void draw();
 
-    }
+    } 
 
-    class Rect : Spatial, Drawable
+    public class Rect : Spatial, Drawable
     {
         public Vector2 size;
 
@@ -244,6 +353,21 @@ namespace c_engine.Content
     {
         private string texture_name;
 
+        public Sprite()
+        {
+
+        }
+
+        public Sprite(string p_texture_name)
+        {
+
+        }
+
+        public void set_texture(string p_texture_name)
+        {
+
+        }
+
         public new void draw()
         {
 
@@ -251,26 +375,165 @@ namespace c_engine.Content
 
     }
 
-    internal class EventListener
+    interface Dynamic
     {
-        public void event_received(string func_name)
+
+    } 
+
+    public class Collider : Rect
+    {
+        WeakReference<SceneChild> owner;
+        MoveTypes collision_type = MoveTypes.SLIDE;
+
+        public enum MoveTypes
+        {
+            STOP,
+            SLIDE
+        }
+
+        public Collider(Vector2 p_size, WeakReference<SceneChild> p_owner = null)
+        {
+            this.size = p_size;
+            this.owner = p_owner == null ? new WeakReference<SceneChild>(get_parent()) : p_owner;
+            Physics.add_collider( new WeakReference<Collider>(this));
+        }
+
+        public void collision_detected(Vector2 p_new_position)
+        {
+            SceneChild out_owner;
+            if (this.owner.TryGetTarget(out out_owner))
+            {
+                //out_owner.collision_detected();
+            }
+
+        }
+
+        public MoveTypes get_collision_type()
+        {
+            return this.collision_type;
+        }
+        
+    }
+
+    public class Physics
+    {
+        private List<WeakReference<Collider>> all_colliders = new List<WeakReference<Collider>>();
+        static Physics instance = new Physics();
+
+        public Physics()
         {
 
         }
 
-        public void stop_event(string func_name)
+        private void update()
+        {
+            foreach (WeakReference<Collider> collider in all_colliders)
+            {
+
+                Collider collider_ob;
+                if (collider.TryGetTarget(out collider_ob))
+                {
+
+                    Collider.MoveTypes collider_move_type = collider_ob.get_collision_type();
+                   
+                    switch (collider_move_type)
+                    {
+                        case Collider.MoveTypes.STOP:
+                            Physics.move_and_stop(collider);
+                            break;
+
+                        case Collider.MoveTypes.SLIDE:
+                            Physics.move_and_slide(collider);
+                            break;
+                    }
+
+                }
+
+            }
+        }
+
+
+        static public void move_and_stop(WeakReference<Collider> p_collider)
+        {
+            //handle collsion logic
+        }
+
+        static public void move_and_slide(WeakReference<Collider> p_collider)
+        {
+            //handle collsion logic
+        }
+
+        static public void add_collider(WeakReference<Collider> p_collider)
+        {
+            Physics.instance.all_colliders.Add(p_collider);
+        }
+    }
+
+    internal class Navigation
+    {
+
+    }
+
+    public class MethodCoordinator
+    { 
+        public MethodCoordinator()
         {
 
+        }
+
+        public void remove_timed_method(string func_name, WeakReference<MethodCoordinator> p_connected_object = null)
+        {
+            p_connected_object = get_func_object(p_connected_object);
+            TimedMethod event_result = Events.find_timed_event(p_connected_object, func_name);
+            Events.delete_event(event_result);
+        }
+
+       public void add_timed_method(string p_connectec_func_name, float p_wait_time, bool p_auto_start = true, bool p_repeats = false, WeakReference<MethodCoordinator> p_connected_object = null)
+        {
+            p_connected_object = get_func_object(p_connected_object);
+            TimedMethod new_event = new TimedMethod(p_connected_object, p_connectec_func_name, p_wait_time, p_auto_start, p_repeats);
+            Events.add_event(new_event);
+        }
+
+        public void pause_timed_method( string p_event_name, WeakReference<MethodCoordinator> p_connected_object = null)
+        {
+            p_connected_object = get_func_object(p_connected_object);
+            TimedMethod event_reuslt = Events.find_timed_event(p_connected_object, p_event_name);
+            event_reuslt.pause();
+        }
+
+        public void restart_timed_method(string p_event_name, WeakReference<MethodCoordinator> p_connected_object = null)
+        {
+            p_connected_object = get_func_object(p_connected_object);
+            TimedMethod event_reuslt = Events.find_timed_event(p_connected_object, p_event_name);
+            event_reuslt.restart();
+        }
+
+        static void add_conditional_event(string p_event_name)
+        {
+            Events.add_event(p_event_name);
+        }
+
+        public WeakReference<MethodCoordinator> get_func_object(WeakReference<MethodCoordinator> p_connected_object)
+        {
+            if (p_connected_object == null)
+            {
+                return new WeakReference<MethodCoordinator>(this);
+            }
+            else
+            {
+                return p_connected_object;
+            }
         }
 
     }
 
-   class Events
+   public class Events
     {
-        static private List<TimedEvent> timed_events;
-        static private Dictionary<string,EventState> conditional_events;
-        static Events instance;
-
+        private List<TimedMethod> timed_methods = new List<TimedMethod>();
+        private Dictionary<string,EventState> events = new Dictionary<string, EventState>();
+        public static Events instance = new Events();
+        
         enum EventState
         {
             UNRESOLVED,
@@ -280,41 +543,71 @@ namespace c_engine.Content
 
         public Events()
         {
-            Events.instance = this;
+
         }
 
-        static void add_timed_event(WeakReference<Object> p_connected_object, string p_connectec_func_name, float p_wait_time, bool p_auto_start = true, bool p_repeats = false)
-        {
-            TimedEvent new_event = new TimedEvent(p_connected_object, p_connectec_func_name, p_wait_time, p_auto_start, p_repeats);
-            Events.timed_events.Add(new_event);
-        }
 
-        static void add_conditional_event(string p_event_name)
+        static public void update()
         {
-            Events.conditional_events.Add(p_event_name, EventState.UNRESOLVED);
-        }
-
-        public void update()
-        {
-            foreach (TimedEvent timer in Events.timed_events)
+            foreach (TimedMethod timer in Events.instance.timed_methods)
             {
                 timer.update();
             }
 
         }
+
+
+        static public TimedMethod find_timed_event(WeakReference<MethodCoordinator> p_connected_object, string p_event_name)
+        {
+            List<TimedMethod> event_results = Events.instance.timed_methods.FindAll(x => x.get_connected_object() == p_connected_object);
+            List<TimedMethod> func_name_results = Events.instance.timed_methods.FindAll(x => x.get_func_name() == p_event_name);
+
+            if (func_name_results != null)
+            {
+                return func_name_results[0];
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        static public void add_event(TimedMethod p_event)
+        {
+            Events.instance.timed_methods.Add(p_event);
+        }
+
+        static public void add_event(string p_event)
+        {
+            Events.instance.events.Add(p_event, EventState.UNRESOLVED);
+        }
+
+        static public void delete_event(TimedMethod p_event)
+        {
+            Events.instance.timed_methods.Remove(p_event);
+        }
+
+        static public void delete_event(string p_event)
+        {
+            Events.instance.events.Remove(p_event);
+        }
+
+
+
+
     }
 
-    class TimedEvent : SceneChild
+    public class TimedMethod : SceneChild
     {
         private float wait_time;
         private float elapsed_time;
         private bool auto_start;
         private bool repeats;
         private bool active;
-        private WeakReference<Object> connected_object;
+        private WeakReference<MethodCoordinator> connected_object;
         private string connected_func_name;
 
-        public TimedEvent(WeakReference<Object> p_connected_object, string p_connectec_func_name, float p_wait_time, bool p_auto_start = true, bool p_repeats = false)
+        public TimedMethod(WeakReference<MethodCoordinator> p_connected_object, string p_connectec_func_name, float p_wait_time, bool p_auto_start = true, bool p_repeats = false)
         {
             this.wait_time = p_wait_time;
             this.auto_start = p_auto_start;
@@ -328,6 +621,16 @@ namespace c_engine.Content
                 this.active = true;
             }
 
+        }
+
+        public WeakReference<MethodCoordinator> get_connected_object()
+        {
+            return this.connected_object;
+        }
+
+        public string get_func_name()
+        {
+            return this.connected_func_name;
         }
 
         public float get_elapsed_time()
@@ -349,19 +652,46 @@ namespace c_engine.Content
          
         }
 
+        public void pause()
+        {
+            this.active = false;
+        }
+
+        public void unpause()
+        {
+           this.active = true;
+        }
+
+        public void restart()
+        {
+            reset_timer();
+            this.active = true;
+        }
+
+        public void toggle_repeat()
+        {
+            this.repeats = !this.repeats;
+        }
+
+        private void reset_timer()
+        {
+            this.elapsed_time = this.wait_time;
+        }
+
         public void time_out()
         {
+            Debug.WriteLine("Time Out");
             MethodInfo mi = connected_object.GetType().GetMethod(connected_func_name);
             mi.Invoke(connected_object, null);
 
             if (this.repeats) {
 
-                this.elapsed_time = this.wait_time;
+                restart();
             }
 
             else
             {
-                this.get_parent().delete_child(this);
+                this.active = false;
             }
         }
 
@@ -369,7 +699,7 @@ namespace c_engine.Content
     }
 
 
-    class SceneTree : SceneChild
+    public class SceneTree : SceneChild
     {
         public SceneTree()
         {
