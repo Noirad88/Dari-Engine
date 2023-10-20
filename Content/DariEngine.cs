@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Drawing;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -16,8 +17,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms.Design;
 using System.Xml;
+using System.Windows.Forms;
 
-namespace c_engine.Content
+namespace c_engine
 {
     namespace Globals
     {
@@ -30,7 +32,46 @@ namespace c_engine.Content
 
     }
 
-    public class World
+
+    public class App : System.IDisposable
+    {
+        private bool disposedValue;
+        public static void Main()
+        {
+            Application.Run(new World());
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~World()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+
+    public class World : Form
     {
     
         public Events Events = new Events();
@@ -38,13 +79,18 @@ namespace c_engine.Content
         public Physics Physics = new Physics();
         public Sound Sound = new Sound();
         public DeltaTime DeltaTime = new DeltaTime();
+        private bool is_running = true;
 
+        static public List<SceneTree> globals = new List<SceneTree>();
         public List<SceneTree> scenes = new List<SceneTree>();
 
         public World()
         {
-            //create scenes 
-
+            if (is_running)
+            {
+                update();
+                draw();
+            }
         }
 
         public void load_scene(string p_scene_name)
@@ -52,22 +98,81 @@ namespace c_engine.Content
             
         }
 
+        public void update()
+        {
+            Debug.WriteLine("updating");
+        }
+
+        public void draw()
+        {
+            Debug.WriteLine("drawing");
+            this.Paint += new PaintEventHandler(world_paint);
+        }
+
+        private void world_paint(object sender, PaintEventArgs pe)
+        {
+            Debug.WriteLine("world_paint");
+            Graphics graphics = pe.Graphics;
+            Pen skyBluePen = new Pen(Brushes.DeepSkyBlue);
+
+            // Set the pen's width.
+            skyBluePen.Width = 8.0F;
+
+            // Set the LineJoin property.
+            skyBluePen.LineJoin = System.Drawing.Drawing2D.LineJoin.Bevel;
+
+            // Draw a rectangle.
+            pe.Graphics.DrawRectangle(skyBluePen,
+                new Rectangle(40, 40, 150, 200));
+
+            //Dispose of the pen.
+            skyBluePen.Dispose();
+        }
 
     }
 
-    public class MainMenu : SceneChild
+    public class GameScreen : SceneChild
+    {
+        Rect game_background_size = new Rect(new Vector2(10, 10));
+        Texture2D game_background_texture;
+
+        public GameScreen()
+        {
+
+        }
+
+    }
+
+    public class MainMenu : GameScreen
     {
         //create main menu setup here
     }
 
-    public class OptionsMenu : SceneChild
+    public class OptionsMenu : GameScreen
     {
         //create main menu setup here
     }
 
-    public class GameWorld : SceneChild
+    public class GameWorld : GameScreen
     {
-        //create game components here
+        Rect background = new Rect(new Vector2(10,10));
+        Texture2D gamearea_texture;
+        public GameWorld()
+        {
+
+            SceneChild new_child = new SceneChild();
+            new_child.child_name = "Body";
+
+            SceneChild new_child2 = new SceneChild();
+            new_child.child_name = "Arm";
+
+            Rect new_rect = new Rect();
+
+            add_child(new_child);
+            add_child(new_child2);
+
+        }
+
     }
 
     public class DeltaTime
